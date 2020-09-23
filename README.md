@@ -1,0 +1,2 @@
+# RollBot
+Deathrolling discord bot
