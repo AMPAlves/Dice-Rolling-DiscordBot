@@ -21,7 +21,6 @@ let db = new sqlite3.Database(dbPath , (err) => {
 });
 
 db.serialize(function() {
-    db.run('DROP TABLE goldPerPerson');
     db.run('CREATE TABLE goldPerPerson(player_id INTEGER PRIMARY KEY, gold_amount INTEGER , date_refill DATE);',function(err) {
         if(err) {
             return console.log(err.message);
@@ -40,6 +39,19 @@ client.on('message', message => {
     let str = message.content;
     let op = message.author;
     console.log(message.content);
+    if(message.content.startsWith(`/getmoney`)) {   
+        console.log("GETTING MONEY")
+        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [op.id], (err, rows) => {
+            if(err) {
+                console.log("erro no get money");
+                return console.error(err.message);
+            }
+            console.log(rows)
+            if(rows) {
+                console.log("YOUR BALANCE IS : " + rows[0].gold_amount)
+            }
+        }) 
+    } 
     if(message.content.startsWith(`/refill`)) {
         createAccount(op);
         refill(op);
@@ -101,12 +113,14 @@ return Math.floor(Math.random().toFixed(length) * (max - (min + 1))) + min;
 
 function goldByID(owner) {
     let gold = 0;
-    db.get(sql, [owner.id] , (err,row) => {
+    db.run(sql, [owner.id] , (err,row) => {
         if (err) {
             console.log(err.message);
         }
-        console.log(row.gold_amount);
-        gold = row.gold_amount;
+        if(row) {
+            console.log(row.gold_amount);
+            gold = row.gold_amount;
+        }
     })
     return gold;
 }
@@ -135,9 +149,10 @@ function todayDate() {
 }
 
 function createAccount(player) {
+    console.log("CREATING ACCOUNT")
     db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 200 ,todayDate()] , function(err) {
         if(err) {
-            console.log("erro no segundo");
+            console.log("erro no create account");
             return console.error(err.message);
         }
     })
