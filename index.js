@@ -39,29 +39,21 @@ client.on('message', message => {
     let str = message.content;
     let op = message.author;
     console.log(message.content);
-    if(message.content.startsWith(`/getmoney`)) {   
-        console.log("GETTING MONEY")
-        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [op.id], (err, rows) => {
-            if(err) {
-                console.log("erro no get money");
-                return console.error(err.message);
-            }
-            console.log(rows)
-            if(rows) {
-                console.log("YOUR BALANCE IS : " + rows[0].gold_amount)
-            }
-        }) 
-    } 
+    if(message.content.startsWith(`/balance`)) {   
+        accountBalance(op.id);
+    }
     if(message.content.startsWith(`/refill`)) {
-        createAccount(op);
         refill(op);
+    }
+    if(message.content.startsWith(`/login`)) {
+        createAccount(op , message);
     }
     if(message.content.startsWith(`${prefix}`)) {
         let opponent = message.mentions.members.first();
         //console.log(message.author.username + ": " + str.slice(1));
         let amount = Math.floor(parseInt(str.slice(6)));
         if(goldByID(op) > amount) {
-        message.channel.send("<@" + opponent.id + "> do you accept this bet ?" );
+        message.channel.send("<@" + opponent.id + "> do you accept this bet ?");
             //Resposta-Request
             let counter = 0;
             let bettingPool = amount*10;
@@ -96,10 +88,10 @@ client.on('message', message => {
             }
         })
         } else {
-            message.channel.send("You don't have enough money" );
+            message.channel.send("You don't have enough money");
         }
     }
-})
+
 
 function getLength(value){
     return value.toString().length;
@@ -148,26 +140,43 @@ function todayDate() {
     return today;
 }
 
-function createAccount(player) {
+function createAccount(player,message) {
     console.log("CREATING ACCOUNT")
-    db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 200 ,todayDate()] , function(err) {
+    db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 200 ,todayDate()] , (err,rows) => {
         if(err) {
             console.log("erro no create account");
             return console.error(err.message);
         }
+        console.log(rows);
     })
-    return ;
+    return message.channel.send("<@" + player + "> your account was created.");
 }
 
-
 function refill(player) {
-        db.run(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?;` , [200, todayDate() ,player.id] , function(err) {
+        db.run(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?;` , [200, todayDate() ,player.id] , (err, rows) => {
             if(err) {
                 return console.error(err.message);
                 console.log("erro no primeiro");
+            }
+            if(rows) {
+                console.log("Your account just got refilled with your daily 200g");
             }
         })
     return console.log("Dinheiro introduzido");
 }
 
+function accountBalance(player) {
+    db.run(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [player], (err, rows) => {
+        if(err) {
+            console.log("erro no get money");
+            return console.error(err.message);
+        }
+        console.log(rows)
+        if(rows) {
+            console.log("YOUR BALANCE IS : " + rows[0].gold_amount)
+        }
+    }) 
+}
+
 client.login(token);
+})
