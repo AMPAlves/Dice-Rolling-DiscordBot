@@ -21,7 +21,7 @@ let db = new sqlite3.Database(dbPath , (err) => {
 });
 
 db.serialize(function() {
-    db.run('CREATE TABLE goldPerPerson(player_id INTEGER PRIMARY KEY, gold_amount INTEGER , date_refill DATE);',function(err) {
+    db.run('CREATE TABLE goldPerPerson(player_id INTEGER PRIMARY KEY, gold_amount INTEGER , date_refill DATE);', function(err) {
         if(err) {
             return console.log(err.message);
         } else {
@@ -52,7 +52,7 @@ client.on('message', message => {
         let opponent = message.mentions.members.first();
         //console.log(message.author.username + ": " + str.slice(1));
         let amount = Math.floor(parseInt(str.slice(6)));
-        if(goldByID(op) > amount) {
+        if(goldByID(op.id) > amount) {
         message.channel.send("<@" + opponent.id + "> do you accept this bet ?");
             //Resposta-Request
             let counter = 0;
@@ -91,7 +91,7 @@ client.on('message', message => {
             message.channel.send("You don't have enough money");
         }
     }
-
+})
 
 function getLength(value){
     return value.toString().length;
@@ -102,21 +102,21 @@ min = Math.ceil(min);
 max = Math.floor(max);
 return Math.floor(Math.random().toFixed(length) * (max - (min + 1))) + min;  
 }
-
+//Testing... Necessario uma callback function
 function goldByID(owner) {
     let gold = 0;
-    db.run(sql, [owner.id] , (err,row) => {
+    db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [owner] , (err,rows) => {
         if (err) {
             console.log(err.message);
         }
-        if(row) {
+        if(rows) {
             console.log(row.gold_amount);
-            gold = row.gold_amount;
+            gold = rows[0].gold_amount;
         }
     })
     return gold;
 }
-
+//Not tested , probably doesn't work
 function transactions(winner,loser,amount,message) {
     db.run(sqlW , [winner.id,amount] , function(err) {
         if(err) {
@@ -131,6 +131,7 @@ function transactions(winner,loser,amount,message) {
     message.channel.send('Transaction concluded!')
     return;
 }
+//Working has Intended (Might change to Comparison)
 function todayDate() {
     let today = new Date();
     let dd = String(today.getDate()).padStart(2, '0');
@@ -139,19 +140,20 @@ function todayDate() {
     today = mm + '/' + dd + '/' + yyyy;
     return today;
 }
-
+//Working has Intended , until further notice
 function createAccount(player,message) {
     console.log("CREATING ACCOUNT")
     db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 200 ,todayDate()] , (err,rows) => {
         if(err) {
             console.log("erro no create account");
             return console.error(err.message);
-        }
+        } else {
         console.log(rows);
+        message.channel.send("<@" + player + "> your account was created.");
+        }
     })
-    return message.channel.send("<@" + player + "> your account was created.");
 }
-
+//Working has Intended
 function refill(player) {
         db.run(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?;` , [200, todayDate() ,player.id] , (err, rows) => {
             if(err) {
@@ -165,8 +167,9 @@ function refill(player) {
     return console.log("Dinheiro introduzido");
 }
 
+//Working has Intended
 function accountBalance(player) {
-    db.run(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [player], (err, rows) => {
+    db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [player], (err, rows) => {
         if(err) {
             console.log("erro no get money");
             return console.error(err.message);
@@ -179,4 +182,3 @@ function accountBalance(player) {
 }
 
 client.login(token);
-})
