@@ -39,7 +39,7 @@ client.on('message', message => {
     console.log(message.content);
     // Working has Intended
     if(message.content.startsWith(`/balance`)) {   
-        accountBalance(op.id);
+        accountBalance(op.id,message);
     }
     // Working has Intended
     if(message.content.startsWith(`/refill`)) {
@@ -48,7 +48,7 @@ client.on('message', message => {
                 return console.error(err.message);
             }
             console.log(rows);
-            if(rows && (todayDate() - rows[0].date_refill) == 0) {
+            if(rows && (todayDate() - rows[0].date_refill) > 0) {
                 message.channel.send("<@" + op.id + "> Your account just got refilled with your daily 200g");
                 refill(op.id);
             } else {
@@ -63,52 +63,63 @@ client.on('message', message => {
     if(message.content.startsWith(`${prefix}`)) {
         let opponent = message.mentions.members.first(); //Verificar as rows
         let amount = Math.floor(parseInt(str.slice(6)));
-        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ? or player_id = ?`, [op,opponent] , (err,rows) => {
+        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [op.id] , (err,rows) => {
             if (err) {
                 console.log(err.message);
             }
             if(rows) {
                 console.log(rows);
                 let goldX = rows[0].gold_amount;
-                let goldZ = rows[1].gold_amount;
-                if(goldX >= amount && goldZ >= amount) { //subdividir isto em funções
-                    message.channel.send("<@" + opponent.id + "> do you accept this bet ?");
-                    //Resposta-Request
-                    let counter = 0;
-                    let bettingPool = amount*10;
-                    let filter = m => (m.content.includes(`/answer`) && m.author == opponent.id) || (m.content.toString() == '/roll' && m.author == (counter % 2 == 0 ? op : opponent));
-                    let collector = new Discord.MessageCollector(message.channel, filter);
-                    collector.on('collect' , (message, col) =>{
-                        opponent = message.author;
-                        if(message.content.includes(`/answer`)) {
-                            message.channel.send("Please roll the dice...");
+                db.all('SELECT * FROM goldPerPerson WHERE player_id = ?' , [opponent.id] , (err,rows) => {
+                    if(err) {
+                        console.log(err.message);
+                    }
+                    if(rows) {
+                        console.log(rows);
+                        let goldY = rows[0].gold_amount;
+                        if(goldX >= amount && goldY >= amount) { //subdividir isto em funções
+                            message.channel.send("<@" + opponent.id + "> do you accept this bet ?");
+                            //Resposta-Request
+                            let counter = 0;
+                            let bettingPool = amount*10;
+                            let filter = m => (m.content.includes(`/answer`) && m.author == opponent.id) || (m.content.toString() == '/roll' && m.author == (counter % 2 == 0 ? op : opponent));
+                            let collector = new Discord.MessageCollector(message.channel, filter);
+                            collector.on('collect' , (message, col) =>{
+                                opponent = message.author;
+                                if(message.content.includes(`/answer`)) {
+                                    message.channel.send("Please roll the dice...");
+                                }
+                                /* Tenho que tratar desta parte do código , o que eu quero fazer é :
+                                Ele fazer o roll seguido , mas de 2 em 2 , ou , de 3 em 3 mudar a embeded message com o novo valor da aposta
+                                */
+                                console.log("Collected message: " + message.content);
+                                if(message.content.includes(`/roll`)) {
+                                    message.channel.awaitMessages(filter , { 
+                                    time: 5000
+                                    }).then(collected => {
+                                    co
+                                    bettingPool = getRandomMinMax(1,bettingPool,getLength(bettingPool));
+                                    if(bettingPool > 1) {
+                                        message.channel.send("Player " + "<@" + message.author.id + "> just rolled : " + bettingPool);
+                                    } else {
+                                        message.channel.send("Player " + "<@" + message.author.id + "> has lost!");
+                                        let winner = (message.author != op) ? opponent : op;
+                                        transaction(winner,message.author,amount,message);
+                                        collector.stop();
+                                    }
+                                    })
+                                    .catch(error => {
+                                        counter = 0;
+                                        bettingPool = 0;
+                                        message.channel.send("Game cancelled");
+                                    })
+                                }
+                            })
+                        } else {
+                            message.channel.send("You don't have enough money");
                         }
-                        console.log("Collected message: " + message.content);
-                        if(message.content.includes(`/roll`)) {
-                            message.channel.awaitMessages(filter , { 
-                            time: 1000
-                            }).then(collected => {
-                            counter++;
-                            bettingPool = getRandomMinMax(1,bettingPool,getLength(bettingPool));
-                            if(bettingPool > 1) {
-                                message.channel.send("Player " + "<@" + message.author.id + "> just rolled : " + bettingPool);
-                            } else {
-                                message.channel.send("Player " + "<@" + message.author.id + "> has lost!");
-                                let winner = (message.author != op) ? opponent : op;
-                                transaction(winner,message.author,amount,message);
-                                collector.stop();
-                            }
-                        })
-                        .catch(error => {
-                            counter = 0;
-                            bettingPool = 0;
-                            message.channel.send("Game cancelled");
-                        })
                     }
                 })
-                } else {
-                    message.channel.send("You don't have enough money");
-                }
             }
         })
         //console.log(message.author.username + ": " + str.slice(1));
@@ -192,22 +203,21 @@ function todayDate() {
 //Working has Intended
 function createAccount(player,message) {
     console.log("CREATING ACCOUNT")
-    db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 200 ,todayDate()] , (err,rows) => {
+    db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 1000 ,todayDate()] , (err,rows) => {
         if(err) {
             console.log("erro no create account");
             return console.error(err.message);
         } else {
         console.log(rows);
-        message.channel.send("<@" + player + "> your account was created.");
+        message.channel.send("<@" + player + "> your account was created with 1000g");
         }
     })
 }
 //Working has Intended
 function refill(player) {
-        db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?` , [200, todayDate() ,player] , (err, rows) => {
+        db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?` , [1000, todayDate() ,player] , (err, rows) => {
             if(err) {
                 return console.error(err.message);
-                console.log("erro no primeiro");
             }
             console.log(rows);
             if(rows) {
@@ -217,7 +227,7 @@ function refill(player) {
 }
 
 //Working has Intended
-function accountBalance(player) {
+function accountBalance(player , message) {
     db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [player], (err, rows) => {
         if(err) {
             console.log("erro no get money");
@@ -225,7 +235,7 @@ function accountBalance(player) {
         }
         console.log(rows)
         if(rows) {
-            console.log("YOUR BALANCE IS : " + rows[0].gold_amount)
+            message.channel.send("Your balance is : " + rows[0].gold_amount)
         }
     }) 
 }
