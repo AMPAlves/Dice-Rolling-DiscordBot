@@ -43,6 +43,9 @@ db.serialize(function() {
 client.once('ready' , () => {
     console.log('Bot is Ready!');
     // console.log(Math.random()); 0.09086973396358555 -> Float com 17 casas. (.toFixed(n) com n casas)
+    //
+
+    updateGold(200, 254702881725349900, 183394900576960513);
 })
 
 client.on('message', message => {
@@ -116,27 +119,8 @@ client.on('message', message => {
                                     if(bettingPool == 1) {
                                         message.channel.send('Player' + '<@' + messagePlayer + '> has lost!');
                                         // REFAZER ESTA MERDA
-                                            console.log(amount + " " + winner + " " + messagePlayer);
-                                            db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? WHERE player_id = ?` , [amount,winner] , (err,rows) => {
-                                                if(err) {
-                                                    return console.error(err.message);
-                                                }
-                                                console.log(rows);
-                                                if(rows) {
-                                                    message.channel.send("winner & winner.id = " + winner + " & " + winner.id );
-                                                    message.channel.send("Your account just won " + amount + "g.");
-                                                    db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? WHERE player_id = ?` , [-amount,messagePlayer] , (err,rows) => {
-                                                        if(err) {
-                                                            return console.error(err.message);
-                                                        }
-                                                        console.log(rows);
-                                                        if(rows) {
-                                                            message.channel.send("messagePlayer & messagePlayer.id = " + messagePlayer + " & " + messagePlayer.id );
-                                                            message.channel.send("Your account just lost " + amount + "g.");
-                                                        }
-                                                    })
-                                                }
-                                            })
+                                        //
+                                        updateGold(amount, winner, messagePlayer);
                                         message.channel.send('Transaction concluded!');
                                         gameStatus = true;
                                         collector.stop();
@@ -215,5 +199,58 @@ function accountBalance(player , message) {
         }
     }) 
 }
+
+
+
+
+function updateGold(amount, winner, messagePlayer) {
+
+    console.log(amount + " " + winner + " " + messagePlayer);
+    // db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? WHERE player_id = ?` , [amount,winner] , (err,rows) => {
+    //     if(err) {
+    //         return console.error(err.message);
+    //     }
+    //     console.log(rows);
+    //     if(rows) {
+    //         // message.channel.send("winner & winner.id = " + winner + " & " + winner.id );
+    //         // message.channel.send("Your account just won " + amount + "g.");
+    //         db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? WHERE player_id = ?` , [-amount,messagePlayer] , (err,rows) => {
+    //             if(err) {
+    //                 return console.error(err.message);
+    //             }
+    //             console.log(rows);
+    //             if(rows) {
+    //                 // message.channel.send("messagePlayer & messagePlayer.id = " + messagePlayer + " & " + messagePlayer.id );
+    //                 // message.channel.send("Your account just lost " + amount + "g.");
+    //             }
+    //         })
+    //     }
+    // })
+    // db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?` , [1000, todayDate() ,254702881725349900], (err, rows) => {
+
+    //         if(err) {
+    //             return console.error(err.message);
+    //         }
+    //         console.log(rows);
+    //         if(rows) {
+    //             console.log("Your account just got refilled with your daily 200g");
+    //         }
+    // })
+    
+    let n = 254702881725349900
+    db.all(`update goldPerPerson set gold_amount = gold_amount + ? where player_id = ?` , [amount, n.toString()] , (a, rows) => { 
+        console.log(a)
+        console.log(rows)
+        db.all(`select * from goldPerPerson` , (a, rows) => { 
+            console.log(a)
+            console.log(rows)
+
+        })
+
+    })
+
+}
+
+
 
 client.login(token);
