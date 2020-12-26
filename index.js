@@ -148,12 +148,12 @@ function todayDate() {
 //Working as Intended
 function createAccount(player, message) {
     console.log("CREATING ACCOUNT")
-    db.all(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 1000, todayDate()], (err, rows) => {
+    db.all(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 500, todayDate()], (err, rows) => {
         if (err) {
             console.log("erro no create account");
             return console.error(err.message);
         } else {
-            message.channel.send("<@" + player + "> your account was created with 1000g");
+            message.channel.send("<@" + player + "> your account was created with 500g");
         }
     })
     db.all(`INSERT INTO gamesPlayed(player_id,roundsWon,roundsLost) VALUES(?,?,?)`, [player.id,0, 0], (err, rows) => {
@@ -166,7 +166,7 @@ function createAccount(player, message) {
 
 //Working as Intended
 function refill(player) {
-    db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?`, [1000, todayDate(), player], (err, rows) => {
+    db.all(`UPDATE goldPerPerson SET gold_amount = gold_amount + ? , date_refill = ? WHERE player_id = ?`, [200, todayDate(), player], (err, rows) => {
         if (err) {
             return console.error(err.message);
         }
