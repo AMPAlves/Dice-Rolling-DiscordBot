@@ -14,7 +14,7 @@ My objective was to recreate this small little game in the discord enviourment ,
   - Checking your balance.
   - Refilling your account gold (Works once every 24h).
   - Checking your luck/winrate.
-  - Cross-Server Ladder Rankings
+  - Cross-Server ladder rankings
   
 ### Features which MIGHT get implemented :
   - Race & Class choice (Respecting the Classic WoW Race/Class options).
