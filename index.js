@@ -24,17 +24,20 @@ db.serialize(function () {
         if (err) {
             return console.log(err.message);
         } else {
-            console.log('Table created')
+            console.log('Table goldPerPerson was created')
+        }
+    })
+    db.run('CREATE TABLE gamesPlayed(player_id TEXT PRIMARY KEY, roundsWon INTEGER, roundsLost INTEGER);', function (err) {
+        if (err) {
+            return console.log(err.message);
+        } else {
+            console.log('Table gamesPlayed was created')
         }
     })
 })
 
 client.once('ready', () => {
     console.log('Bot is Ready!');
-    // console.log(Math.random()); 0.09086973396358555 -> Float com 17 casas. (.toFixed(n) com n casas)
-    //
-
-    //updateGold(200, 254702881725349891n, 183394900576960513n);
 })
 
 client.on('message', message => {
@@ -64,15 +67,17 @@ client.on('message', message => {
     if (message.content.startsWith(`/login`)) {
         createAccount(op, message);
     }
+    if (message.content.startsWith(`/luck`)) {
+        winrate(op, message);
+    }
     if (message.content.startsWith(`${prefix}`)) {
-        let opponent = message.mentions.members.first(); //Verificar as rows
+        let opponent = message.mentions.members.first();
         let amount = Math.floor(parseInt(str.slice(6)));
         db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [op.id], (err, rows) => {
             if (err) {
                 console.log(err.message);
             }
             if (rows) {
-                message.channel.send('EU DESEJO MORRER : ' + op.id);
                 console.log(rows);
                 let goldX = rows[0].gold_amount;
                 db.all('SELECT * FROM goldPerPerson WHERE player_id = ?', [opponent.id], (err, rows) => {
@@ -82,7 +87,7 @@ client.on('message', message => {
                     if (rows) {
                         console.log(rows);
                         let goldY = rows[0].gold_amount;
-                        if (goldX >= amount && goldY >= amount) { //subdividir isto em funções
+                        if (goldX >= amount && goldY >= amount) {
                             message.channel.send("<@" + opponent.id + "> do you accept this bet ?");
                             //Resposta-Request
                             let counter = 0;
@@ -91,15 +96,12 @@ client.on('message', message => {
                             let collector = new Discord.MessageCollector(message.channel, filter);
                             collector.on('collect', (message, col) => {
                                 opponent = message.author;
-                                if (message.content.includes(`/answer`)) {
-                                    message.channel.send("Please roll the dice...");
-                                }
                                 console.log("Collected message: " + message.content);
                                 let gameStatus = false;
                                 let counter = 0;
                                 while (!gameStatus) {
-                                    let messagePlayer = (counter % 2 == 0) ? op : opponent;
-                                    let winner = (messagePlayer != op) ? op : opponent;
+                                    let messagePlayer = (counter % 2 == 0) ? opponent : op;
+                                    let winner = (messagePlayer != op) ? opponent : op;
                                     bettingPool = getRandomMinMax(1, bettingPool, getLength(bettingPool));
                                     message.channel.send('Player' + '<@' + messagePlayer + '> just rolled : ' + bettingPool);
                                     if (bettingPool == 1) {
@@ -144,12 +146,18 @@ function todayDate() {
 //Working as Intended
 function createAccount(player, message) {
     console.log("CREATING ACCOUNT")
-    db.run(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 1000, todayDate()], (err, rows) => {
+    db.all(`INSERT INTO goldPerPerson(player_id,gold_amount,date_refill) VALUES(?,?,?)`, [player.id, 1000, todayDate()], (err, rows) => {
         if (err) {
             console.log("erro no create account");
             return console.error(err.message);
         } else {
             message.channel.send("<@" + player + "> your account was created with 1000g");
+        }
+    })
+    db.all(`INSERT INTO gamesPlayed(player_id,roundsWon,roundsLost) VALUES(?,?,?)`, [player.id,0, 0], (err, rows) => {
+        if (err) {
+            console.log("erro no create account");
+            return console.error(err.message);
         }
     })
 }
@@ -162,7 +170,20 @@ function refill(player) {
         }
         console.log(rows[0]);
         if (rows) {
-            console.log("Your account just got refilled with your daily 200g");
+            console.log("Your account just got refilled with your daily " + amount + "g.");
+        }
+    })
+}
+
+function winrate(player,message) {
+    db.all(`SELECT * FROM gamesPlayed WHERE player_id = ?`, [player.id], (err, rows) => {
+        if (err) {
+            return console.error(err.message);
+        }
+        console.log(rows[0]);
+        if (rows) {
+            let winrate = (rows[0].roundsLost == 0) || (rows[0].roundsLost + rows[0].roundsWon == 0) ? (rows[0].roundsWon/1) * 100 : (rows[0].roundsWon / rows[0].roundsLost) * 100;
+            message.channel.send("Current winrate : " + winrate + "%");
         }
     })
 }
@@ -188,6 +209,11 @@ function updateGold(amount, winner, loser) {
             return console.error(err.message);
         }
         if (rows) {
+            db.all(`UPDATE gamesPlayed SET roundsWon = roundsWon + ? WHERE player_id = ?`, [1,loser.id], (err, rows) => {
+                if(err) {
+                    return console.error(err.message);
+                }
+            })
         }
     })
 
@@ -196,6 +222,11 @@ function updateGold(amount, winner, loser) {
             return console.error(err.message);
         }
         if (rows) {
+            db.all(`UPDATE gamesPlayed SET roundsLost = roundsLost + ? WHERE player_id = ?`, [1,winner.id], (err, rows) => {
+                if(err) {
+                    return console.error(err.message);
+                }
+            })
         }
     })
 }
