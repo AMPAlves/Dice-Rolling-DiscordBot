@@ -24,5 +24,5 @@ My objective was to recreate this small little game in the discord enviourment ,
   - Singleplayer gold gathering
   - Inventory / Item system
   
-## Contributors :
+### Contributors :
  - Romes
