@@ -13,12 +13,12 @@ const sql = `SELECT gold_amount FROM goldPerPerson WHERE player_id = ?`;
 let db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         return console.error(err.message);
-    }
+    } else {
     console.log('Connected to the in-memory SQLite database.');
+    }
 });
 
 //Working as Intended
-
 db.serialize(function () {
     db.run('CREATE TABLE goldPerPerson(player_id TEXT PRIMARY KEY, gold_amount INTEGER , date_refill DATE);', function (err) {
         if (err) {
@@ -42,38 +42,40 @@ client.once('ready', () => {
 
 client.on('message', message => {
     let str = message.content;
-    let op = message.author;
+    let msgAuthor = message.author;
     console.log(message.content);
     //Working as Intended
     if (message.content.startsWith(`/balance`)) {
-        accountBalance(op.id, message);
+        accountBalance(msgAuthor.id, message);
     }
     //Working as Intended
     if (message.content.startsWith(`/refill`)) {
-        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [op.id], (err, rows) => {
+        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [msgAuthor.id], (err, rows) => {
             if (err) {
                 return console.error(err.message);
             }
             console.log(rows);
             if (rows && (todayDate() - rows[0].date_refill) > 0) {
-                message.channel.send("<@" + op.id + "> Your account just got refilled with your daily 200g");
-                refill(op.id);
+                message.channel.send("<@" + msgAuthor.id + "> Your account just got refilled with your daily 200g");
+                refill(msgAuthor.id);
             } else {
-                message.channel.send("<@" + op.id + "> Your daily cooldown is still active");
+                message.channel.send("<@" + msgAuthor.id + "> Your daily cooldown is still active");
             }
         })
     }
     //Working as Intended
     if (message.content.startsWith(`/login`)) {
-        createAccount(op, message);
+        createAccount(msgAuthor, message);
     }
+    //Working as Intended
     if (message.content.startsWith(`/luck`)) {
-        winrate(op, message);
+        winrate(msgAuthor, message);
     }
+    //Working as Intended
     if (message.content.startsWith(`${prefix}`)) {
         let opponent = message.mentions.members.first();
         let amount = Math.floor(parseInt(str.slice(6)));
-        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [op.id], (err, rows) => {
+        db.all(`SELECT * FROM goldPerPerson WHERE player_id = ?`, [msgAuthor.id], (err, rows) => {
             if (err) {
                 console.log(err.message);
             }
@@ -92,7 +94,7 @@ client.on('message', message => {
                             //Resposta-Request
                             let counter = 0;
                             let bettingPool = amount * 10;
-                            let filter = m => (m.content.includes(`/answer`) && m.author == opponent.id) || (m.content.toString() == '/roll' && m.author == (counter % 2 == 0 ? op : opponent));
+                            let filter = m => (m.content.includes(`/answer`) && m.author == opponent.id);
                             let collector = new Discord.MessageCollector(message.channel, filter);
                             collector.on('collect', (message, col) => {
                                 opponent = message.author;
@@ -100,14 +102,14 @@ client.on('message', message => {
                                 let gameStatus = false;
                                 let counter = 0;
                                 while (!gameStatus) {
-                                    let messagePlayer = (counter % 2 == 0) ? opponent : op;
-                                    let winner = (messagePlayer != op) ? opponent : op;
+                                    let messagePlayer = (counter % 2 == 0) ? opponent : msgAuthor;
+                                    let winner = (messagePlayer != msgAuthor) ? msgAuthor : opponent;
                                     bettingPool = getRandomMinMax(1, bettingPool, getLength(bettingPool));
                                     message.channel.send('Player' + '<@' + messagePlayer + '> just rolled : ' + bettingPool);
                                     if (bettingPool == 1) {
-                                        message.channel.send('Player' + '<@' + messagePlayer + '> has lost!');
+                                        message.channel.send('Player' + '<@' + messagePlayer + '> lost!');
                                         updateGold(amount, winner, messagePlayer);
-                                        message.channel.send('Transaction concluded!');
+                                        message.channel.send('Transaction concluded & stats updated!');
                                         gameStatus = true;
                                         collector.stop();
                                     }
@@ -170,11 +172,11 @@ function refill(player) {
         }
         console.log(rows[0]);
         if (rows) {
-            console.log("Your account just got refilled with your daily " + amount + "g.");
         }
     })
 }
 
+//Working as Intended
 function winrate(player,message) {
     db.all(`SELECT * FROM gamesPlayed WHERE player_id = ?`, [player.id], (err, rows) => {
         if (err) {
@@ -209,7 +211,7 @@ function updateGold(amount, winner, loser) {
             return console.error(err.message);
         }
         if (rows) {
-            db.all(`UPDATE gamesPlayed SET roundsWon = roundsWon + ? WHERE player_id = ?`, [1,loser.id], (err, rows) => {
+            db.all(`UPDATE gamesPlayed SET roundsWon = roundsWon + ? WHERE player_id = ?`, [1,winner.id], (err, rows) => {
                 if(err) {
                     return console.error(err.message);
                 }
@@ -222,7 +224,7 @@ function updateGold(amount, winner, loser) {
             return console.error(err.message);
         }
         if (rows) {
-            db.all(`UPDATE gamesPlayed SET roundsLost = roundsLost + ? WHERE player_id = ?`, [1,winner.id], (err, rows) => {
+            db.all(`UPDATE gamesPlayed SET roundsLost = roundsLost + ? WHERE player_id = ?`, [1,loser.id], (err, rows) => {
                 if(err) {
                     return console.error(err.message);
                 }
